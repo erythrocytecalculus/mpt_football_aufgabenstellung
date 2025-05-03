@@ -1,36 +1,41 @@
+from ultralytics import YOLO
+
 class Detector:
     def __init__(self):
-        self.name = "Detector" # Do not change the name of the module as otherwise recording replay would break!
-
+        self.name = "Detector"
+        # Load the custom-trained YOLOv8 model (use the correct path to your .pt file)
+        self.model = YOLO('path/to/yolov8m-football.pt')  # Replace with the correct path
+    
     def start(self, data):
-        # TODO: Implement start up procedure of the module
+        # Initialize any variables or settings needed at the start
         pass
 
     def stop(self, data):
-        # TODO: Implement shut down procedure of the module
+        # Perform any shutdown operations (if needed)
         pass
 
     def step(self, data):
-        # TODO: Implement processing of a single frame
-        # The task of the detector is to detect the ball, the goal keepers, the players and the referees if visible.
-        # A bounding box needs to be defined for each detected object including the objects center position (X,Y) and its width and height (W, H) 
-        # You can return an arbitrary number of objects 
+        image = data["image"]  # Access the current frame from the data
         
-        # Note: You can access data["image"] to receive the current image
-        # Return a dictionary with detections and classes
-        #
-        # Detections must be a Nx4 NumPy Tensor, one 4-dimensional vector per detection
-        # The detection vector itself is encoded as (X, Y, W, H), so X and Y coordinate first, then width and height of each detection box.
-        # X and Y coordinates are the center point of the object, so the bounding box is drawn from (X - W/2, Y - H/2) to (X + W/2, Y + H/2)
-        #
-        # Classes must be Nx1 NumPy Tensor, one scalar entryx per detection
-        # For each corresponding detection, the following mapping must be used
-        #   0: Ball
-        #   1: GoalKeeper
-        #   2: Player
-        #   3: Referee
+        # Run inference using the YOLOv8 model
+        results = self.model(image)  # Perform inference
+        
+        # Get the bounding boxes (xywh format: x_center, y_center, width, height)
+        detections = results.xywh[0].cpu().numpy()  # Extract detections
+        class_names = results.names  # List of class names (ball, player, etc.)
 
+        # Set a confidence threshold for filtering out low-confidence detections
+        confidence_threshold = 0.5
+        detections = detections[detections[:, 4] > confidence_threshold]  # Keep only detections with confidence > 0.5
+        
+        class_ids = detections[:, -1].astype(int)  # Get the class IDs of the detected objects
+        
+        # Prepare bounding boxes and class labels
+        boxes = detections[:, :4]  # Bounding boxes (x_center, y_center, width, height)
+        class_labels = [class_names[class_id] for class_id in class_ids]  # Get the class labels for each detection
+        
+        # Return detections and class labels
         return {
-            "detections": None,
-            "classes": None
+            "detections": boxes,  # Bounding box coordinates (X, Y, W, H)
+            "classes": class_labels  # Corresponding class labels (ball, player, goalkeeper, referee)
         }
