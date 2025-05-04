@@ -4,7 +4,7 @@ class Detector:
     def __init__(self):
         self.name = "Detector"
         # Load the custom-trained YOLOv8 model (use the correct path to your .pt file)
-        self.model = YOLO('path/to/yolov8m-football.pt')  # Replace with the correct path
+        self.model = YOLO(r"C:\Users\TUFA17\mpt_football_aufgabenstellung\yolov8m-football.pt")  # Replace with the correct path
     
     def start(self, data):
         # Initialize any variables or settings needed at the start
