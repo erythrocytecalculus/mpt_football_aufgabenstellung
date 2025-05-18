@@ -1,56 +1,113 @@
 # Note: A typical tracker design implements a dedicated filter class for keeping the individual state of each track
 # The filter class represents the current state of the track (predicted position, size, velocity) as well as additional information (track age, class, missing updates, etc..)
 # The filter class is also responsible for assigning a unique ID to each newly formed track
+import numpy as np
+
 class Filter:
+    next_id = 1
+
     def __init__(self, z, cls):
-        # TODO: Implement filter initializstion
-        pass
-        
-    # TODO: Implement remaining funtionality for an individual track
-    
-    
+        # Initialize the track state
+        self.id = Filter.next_id
+        Filter.next_id += 1
+        self.position = np.array(z[:2])  # (x, y) center
+        self.size = np.array(z[2:4])     # (width, height)
+        self.velocity = np.array([0, 0]) # Initial velocity
+        self.age = 1                     # Track age in frames
+        self.class_id = cls              # Class of the tracked object
+        self.missing_count = 0           # Missing frame count
+
+    def update(self, z):
+        # Update the position and velocity of the track
+        new_position = np.array(z[:2])
+        self.velocity = new_position - self.position  # Calculate velocity
+        self.position = new_position
+        self.size = np.array(z[2:4])
+        self.age += 1
+        self.missing_count = 0  # Reset missing count
+
+    def predict(self):
+        # Predict the next position based on velocity
+        self.position += self.velocity
+        self.age += 1
+        self.missing_count += 1
+
+    def is_lost(self, max_missing=5):
+        # Determine if the track should be removed
+        return self.missing_count > max_missing
+
+    def get_state(self):
+        # Return the state vector (x, y, w, h)
+        return np.concatenate((self.position, self.size))
+
 class Tracker:
     def __init__(self):
-        self.name = "Tracker" # Do not change the name of the module as otherwise recording replay would break!
+        self.name = "Tracker"  # Keep the module name unchanged
+        self.tracks = []       # List of current tracks
 
     def start(self, data):
-        # TODO: Implement start up procedure of the module
-        pass
+        self.tracks = []
 
     def stop(self, data):
-        # TODO: Implement shut down procedure of the module
-        pass
+        self.tracks = []
 
     def step(self, data):
-        # TODO: Implement processing of a detection list
-        # The task of the tracker module is to identify (temporal) consistent tracks out of the given list of detections
-        # The tracker maintains a list of known tracks which is initially empty. 
-        # The tracker then tries to associate all given detections from the detector to existing tracks. A meaningful metric needs to be defined
-        # to decide which detection should be associated with each track and which detections better stay unassigned.
-        # After the association step, one must handle there different cases:
-        #   1) Detections which have not beed associated with a track: For these, create a new filter class and initialize its state based on the detection 
-        #   2) Tracks which have a detection: The state of these can be updated based on the associated detection
-        #   3) Tracks which have no detection: It makes sense to allow for a few missing frames, nonetheless it is still necessary to predict the 
-        #      current filter state (e.g. based on the optical flow measurement and the object velocity). If too many frames are missing, the track can be deleted
+        detections = data.get("detections", [])
+        classes = data.get("classes", [])
 
-        # Note: You can access data["detections"] and data["classes"] to receive the current list of detections and their corresponding classes
-        # You must return a dictionary with the given fields:
-        #       "tracks":           A Nx4 NumPy Array containing a 4-dimensional state vector for each track. Similar to the detections, 
-        #                           the track state containts the center point (X,Y) as well as the bounding box width and height (W, H)
-        #       "trackVelocities":  A Nx2 NumPy Array with an additional velocity estimate (in pixels per frame) for each track
-        #       "trackAge":         A Nx1 List with the track age (number of total frames this track exists). The track age starts at 
-        #                           1 on track creation and increases monotonically by 1 per frame until the track is deleted.
-        #       "trackClasses":     A Nx1 List of classes associated with each track. Similar to detections, the following mapping must be used
-        #                               0: Ball
-        #                               1: GoalKeeper
-        #                               2: Player
-        #                               3: Referee
-        #       "trackIds":         A Nx1 List of unique IDs for each track. IDs must not be reused and be unique during the lifetime of the program. 
+        new_tracks = []
+        track_states = []
+        track_velocities = []
+        track_ages = []
+        track_classes = []
+        track_ids = []
+
+        # Update existing tracks with new detections
+        for track in self.tracks:
+            matched = False
+            for i, detection in enumerate(detections):
+                # Calculate distance between track and detection
+                distance = np.linalg.norm(track.position - np.array(detection[:2]))
+
+                # Check if the detection is close enough
+                if distance < 50:
+                    track.update(detection)
+                    matched = True
+                    # Remove used detection
+                    detections = np.delete(detections, i, axis=0)
+                    classes = np.delete(classes, i)
+                    break
+
+            # Predict position if no match is found
+            if not matched:
+                track.predict()
+
+            # Keep track if it's not lost
+            if not track.is_lost():
+                new_tracks.append(track)
+                track_states.append(track.get_state())
+                track_velocities.append(track.velocity)
+                track_ages.append(track.age)
+                track_classes.append(track.class_id)
+                track_ids.append(track.id)
+
+        # Create new tracks for unmatched detections
+        for detection, cls in zip(detections, classes):
+            new_track = Filter(detection, cls)
+            new_tracks.append(new_track)
+            track_states.append(new_track.get_state())
+            track_velocities.append(new_track.velocity)
+            track_ages.append(new_track.age)
+            track_classes.append(cls)
+            track_ids.append(new_track.id)
+
+        # Update tracks
+        self.tracks = new_tracks
+
         return {
-            "tracks": None,
-            "trackVelocities": None,
-            "trackAge": None,
-            "trackClasses": None,
-            "trackIds": None
+            "tracks": np.array(track_states, dtype=np.float32),
+            "trackVelocities": np.array(track_velocities, dtype=np.float32),
+            "trackAge": track_ages,
+            "trackClasses": track_classes,
+            "trackIds": track_ids
         }
-
