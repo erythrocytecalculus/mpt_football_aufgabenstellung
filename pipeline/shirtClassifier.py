@@ -1,73 +1,25 @@
-import cv2 as cv
-import numpy as np
-
 class ShirtClassifier:
     def __init__(self):
-        self.name = "Shirt Classifier"  # Module name
-        
-        # Predefined histogram for Team A and Team B (these can be updated manually based on the teams' colors)
-        self.teamA_histogram = None
-        self.teamB_histogram = None
-    
+        self.name = "Shirt Classifier"  # Do not change the name of the module as otherwise recording replay would break!
+
     def start(self, data):
-        # Initialize anything needed at the start (e.g., team color histograms)
+        # TODO: Implement start up procedure of the module
         pass
-    
+
     def stop(self, data):
-        # Any shutdown operations (if needed)
+        # TODO: Implement shut down procedure of the module
         pass
-    
+
     def step(self, data):
-        image = data["image"]  # Access the current frame
-        tracks = data["tracks"]  # Access the tracks (bounding boxes of detected players)
-        track_classes = data["trackClasses"]  # Access the classes for each tracked object
+        # TODO: Implement processing of a current frame list
+        # The task of the shirt classifier module is to identify the two teams based on their shirt color and to assign each player to one of the two teams
 
-        teamAColor = None
-        teamBColor = None
-        teamClasses = []  # To store the team assignment for each player
-        
-        # Initialize histograms for Team A and Team B if not defined
-        if self.teamA_histogram is None or self.teamB_histogram is None:
-            # Define the reference histograms for Team A and Team B (These could be manually defined based on sample shirt colors)
-            teamA_sample = cv.imread('teamA_sample_shirt.jpg')  # Sample image of Team A shirt
-            teamB_sample = cv.imread('teamB_sample_shirt.jpg')  # Sample image of Team B shirt
-            
-            self.teamA_histogram = self.calculate_histogram(teamA_sample)
-            self.teamB_histogram = self.calculate_histogram(teamB_sample)
-        
-        # Loop through all players and assign them to a team
-        for index, track in enumerate(tracks):
-            if track_classes[index] == 2:  # Only process players (class 2)
-                x, y, w, h = track  # Extract bounding box for each player
-                
-                # Crop the player's shirt from the image using the bounding box
-                shirt_crop = image[y:y+h, x:x+w]
-                
-                # Convert the shirt crop to HSV color space
-                shirt_hsv = cv.cvtColor(shirt_crop, cv.COLOR_BGR2HSV)
-                
-                # Calculate the color histogram in the Hue channel
-                shirt_hist = self.calculate_histogram(shirt_hsv)
-                
-                # Compare the histogram of the player's shirt to the predefined histograms for Team A and Team B
-                dist_to_teamA = cv.compareHist(shirt_hist, self.teamA_histogram, cv.HISTCMP_CORREL)
-                dist_to_teamB = cv.compareHist(shirt_hist, self.teamB_histogram, cv.HISTCMP_CORREL)
-                
-                # Assign the player to the closest team based on the histogram comparison
-                if dist_to_teamA > dist_to_teamB:
-                    teamClasses.append(1)  # Team A
-                else:
-                    teamClasses.append(2)  # Team B
-        
-        return {
-            "teamAColor": teamAColor,
-            "teamBColor": teamBColor,
-            "teamClasses": teamClasses
-        }
-
-    def calculate_histogram(self, image):
-        """Calculate a color histogram for the given image in the Hue channel"""
-        hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
-        hist = cv.calcHist([hsv], [0], None, [256], [0, 256])  # Only use Hue channel (0th channel)
-        cv.normalize(hist, hist, 0, 1, cv.NORM_MINMAX)  # Normalize the histogram
-        return hist
+        # Note: You can access data["image"] and data["tracks"] to receive the current image as well as the current track list
+        # You must return a dictionary with the given fields:
+        #       "teamAColor":       A 3-tuple (B, G, R) containing the blue, green and red channel values (between 0 and 255) for team A
+        #       "teamBColor":       A 3-tuple (B, G, R) containing the blue, green and red channel values (between 0 and 255) for team B
+        #       "teamClasses"       A list with an integer class for each track according to the following mapping:
+        #           0: Team not decided or not a player (e.g. ball, goal keeper, referee)
+        #           1: Player belongs to team A
+        #           2: Player belongs to team B
+        return {"teamAColor": None, "teamBColor": None, "teamClasses": None}
