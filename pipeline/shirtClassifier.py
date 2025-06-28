@@ -66,3 +66,13 @@ class ShirtClassifier:
             self.teamAColor = tuple(map(int, centers[1]))
             self.teamBColor = tuple(map(int, centers[0]))
             labels = 1 - labels
+
+        team_classes = []
+        for i in range(len(tracks)):
+            if track_classes[i] != 2:
+                team_classes.append(0)
+            elif i in player_ids:
+                idx = player_ids.index(i)
+                team_classes.append(1 if labels[idx] == 0 else 2)
+            else:
+                team_classes.append(0)
