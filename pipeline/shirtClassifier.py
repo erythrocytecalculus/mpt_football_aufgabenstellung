@@ -46,3 +46,23 @@ class ShirtClassifier:
             avg_color = np.mean(torso.reshape(-1, 3), axis=0)
             player_colors.append(avg_color)
             player_ids.append(i)
+
+        if len(player_colors) < 2:
+            return {
+                "teamAColor": self.teamAColor,
+                "teamBColor": self.teamBColor,
+                "teamClasses": [0 if c != 2 else 1 for c in track_classes],
+            }
+
+        kmeans = KMeans(n_clusters=2, random_state=0)
+        kmeans.fit(player_colors)
+        centers = kmeans.cluster_centers_
+        labels = kmeans.labels_
+
+        if centers[0].mean() < centers[1].mean():
+            self.teamAColor = tuple(map(int, centers[0]))
+            self.teamBColor = tuple(map(int, centers[1]))
+        else:
+            self.teamAColor = tuple(map(int, centers[1]))
+            self.teamBColor = tuple(map(int, centers[0]))
+            labels = 1 - labels
