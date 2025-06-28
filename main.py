@@ -1,3 +1,6 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 from engine import Engine, npTensor, rgbImage, lst
 from modules import VideoReader, Display,  recordReplayMultiplex, RRPlexMode
 from pipeline.detector import Detector
@@ -11,10 +14,10 @@ shape = (960, 540)
 engine = Engine(
   modules=[
     VideoReader(targetSize=shape),
-    recordReplayMultiplex(Detector(), RRPlexMode.REPLAY),
+    recordReplayMultiplex(Detector(), RRPlexMode.BYPASS),
     recordReplayMultiplex(OpticalFlow(), RRPlexMode.REPLAY),
     recordReplayMultiplex(Tracker(), RRPlexMode.REPLAY),
-    recordReplayMultiplex(ShirtClassifier(), RRPlexMode.REPLAY),
+    recordReplayMultiplex(ShirtClassifier(), RRPlexMode.BYPASS),
     Display(historyBufferSize=1000)
     ],
   signals={
@@ -33,5 +36,5 @@ engine = Engine(
     "testout": int
   })
 
-data = { "video": 'videos/13.mp4' }
+data = { "video": 'videos/3.mp4' }
 signals = engine.run(data)
