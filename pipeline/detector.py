@@ -1,3 +1,6 @@
+from ultralytics import YOLO
+import numpy as np
+
 class Detector:
     def __init__(self, model_path="yolov8m-football.pt", conf_threshold=0.1):
         self.name = "Detector"
@@ -5,8 +8,8 @@ class Detector:
         self.conf_threshold = conf_threshold
 
     def start(self, data):
-        # TODO: Implement start up procedure of the module
-        pass
+        self.model = YOLO(self.model_path)
+        print(f"Detector model '{self.model_path}' loaded.")
 
     def stop(self, data):
         # TODO: Implement shut down procedure of the module
