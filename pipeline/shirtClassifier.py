@@ -1,14 +1,19 @@
+import cv2
+import numpy as np
+from sklearn.cluster import KMeans
+
+
 class ShirtClassifier:
     def __init__(self):
-        self.name = "Shirt Classifier"  # Do not change the name of the module as otherwise recording replay would break!
+        self.name = "Shirt Classifier"
+        self.teamAColor = (0, 0, 255)
+        self.teamBColor = (255, 0, 0)
 
     def start(self, data):
-        # TODO: Implement start up procedure of the module
-        pass
+        print("ShirtClassifier has started.")
 
     def stop(self, data):
-        # TODO: Implement shut down procedure of the module
-        pass
+        print("ShirtClassifier has stopped.")
 
     def step(self, data):
         # TODO: Implement processing of a current frame list
