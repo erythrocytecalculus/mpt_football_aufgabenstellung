@@ -76,3 +76,10 @@ class ShirtClassifier:
                 team_classes.append(1 if labels[idx] == 0 else 2)
             else:
                 team_classes.append(0)
+
+        print(f"Frame processed, Team A: {self.teamAColor}, Team B: {self.teamBColor}")
+        return {
+            "teamAColor": self.teamAColor,
+            "teamBColor": self.teamBColor,
+            "teamClasses": team_classes,
+        }
