@@ -26,3 +26,23 @@ class ShirtClassifier:
                 "teamBColor": self.teamBColor,
                 "teamClasses": [0] * len(tracks),
             }
+
+        player_colors = []
+        player_ids = []
+
+        for i, (bbox, cls) in enumerate(zip(tracks, track_classes)):
+            if cls != 2:
+                continue
+            x, y, w, h = bbox
+            x1 = int(x - w / 2)
+            y1 = int(y - h / 2)
+            x2 = int(x + w / 2)
+            y2 = int(y + h / 2)
+            torso = image[y1 : y1 + int(0.5 * h), x1:x2]
+
+            if torso.size == 0:
+                continue
+
+            avg_color = np.mean(torso.reshape(-1, 3), axis=0)
+            player_colors.append(avg_color)
+            player_ids.append(i)
