@@ -1,25 +1,85 @@
+import cv2
+import numpy as np
+from sklearn.cluster import KMeans
+
+
 class ShirtClassifier:
     def __init__(self):
-        self.name = "Shirt Classifier"  # Do not change the name of the module as otherwise recording replay would break!
+        self.name = "Shirt Classifier"
+        self.teamAColor = (0, 0, 255)
+        self.teamBColor = (255, 0, 0)
 
     def start(self, data):
-        # TODO: Implement start up procedure of the module
-        pass
+        print("ShirtClassifier has started.")
 
     def stop(self, data):
-        # TODO: Implement shut down procedure of the module
-        pass
+        print("ShirtClassifier has stopped.")
 
     def step(self, data):
-        # TODO: Implement processing of a current frame list
-        # The task of the shirt classifier module is to identify the two teams based on their shirt color and to assign each player to one of the two teams
+        image = data.get("image")
+        tracks = data.get("tracks", [])
+        track_classes = data.get("trackClasses", [])
 
-        # Note: You can access data["image"] and data["tracks"] to receive the current image as well as the current track list
-        # You must return a dictionary with the given fields:
-        #       "teamAColor":       A 3-tuple (B, G, R) containing the blue, green and red channel values (between 0 and 255) for team A
-        #       "teamBColor":       A 3-tuple (B, G, R) containing the blue, green and red channel values (between 0 and 255) for team B
-        #       "teamClasses"       A list with an integer class for each track according to the following mapping:
-        #           0: Team not decided or not a player (e.g. ball, goal keeper, referee)
-        #           1: Player belongs to team A
-        #           2: Player belongs to team B
-        return {"teamAColor": None, "teamBColor": None, "teamClasses": None}
+        if image is None or len(tracks) == 0:
+            return {
+                "teamAColor": self.teamAColor,
+                "teamBColor": self.teamBColor,
+                "teamClasses": [0] * len(tracks),
+            }
+
+        player_colors = []
+        player_ids = []
+
+        for i, (bbox, cls) in enumerate(zip(tracks, track_classes)):
+            if cls != 2:
+                continue
+            x, y, w, h = bbox
+            x1 = int(x - w / 2)
+            y1 = int(y - h / 2)
+            x2 = int(x + w / 2)
+            y2 = int(y + h / 2)
+            torso = image[y1 : y1 + int(0.5 * h), x1:x2]
+
+            if torso.size == 0:
+                continue
+
+            avg_color = np.mean(torso.reshape(-1, 3), axis=0)
+            player_colors.append(avg_color)
+            player_ids.append(i)
+
+        if len(player_colors) < 2:
+            return {
+                "teamAColor": self.teamAColor,
+                "teamBColor": self.teamBColor,
+                "teamClasses": [0 if c != 2 else 1 for c in track_classes],
+            }
+
+        kmeans = KMeans(n_clusters=2, random_state=0)
+        kmeans.fit(player_colors)
+        centers = kmeans.cluster_centers_
+        labels = kmeans.labels_
+
+        if centers[0].mean() < centers[1].mean():
+            self.teamAColor = tuple(map(int, centers[0]))
+            self.teamBColor = tuple(map(int, centers[1]))
+        else:
+            self.teamAColor = tuple(map(int, centers[1]))
+            self.teamBColor = tuple(map(int, centers[0]))
+            labels = 1 - labels
+
+        team_classes = []
+        for i in range(len(tracks)):
+            if track_classes[i] != 2:
+                team_classes.append(0)
+            elif i in player_ids:
+                idx = player_ids.index(i)
+                team_classes.append(1 if labels[idx] == 0 else 2)
+            else:
+                team_classes.append(0)
+
+        print(f"Frame processed – Team A: {self.teamAColor}, Team B: {self.teamBColor}")
+        return {
+            "teamAColor": self.teamAColor,
+            "teamBColor": self.teamBColor,
+            "teamClasses": team_classes,
+        }
