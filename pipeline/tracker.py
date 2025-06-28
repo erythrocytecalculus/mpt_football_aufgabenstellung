@@ -11,7 +11,7 @@ class Filter:
 
 class Tracker:
     def __init__(self):
-        self.name = "Tracker" # Do not change the name of the module as otherwise recording replay would break!
+        self.name = "Tracker"  # Do not change the name of the module as otherwise recording replay would break!
 
     def start(self, data):
         # TODO: Implement start up procedure of the module
@@ -51,5 +51,5 @@ class Tracker:
             "trackVelocities": None,
             "trackAge": None,
             "trackClasses": None,
-            "trackIds": None
+            "trackIds": None,
         }

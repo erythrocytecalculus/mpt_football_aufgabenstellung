@@ -1,6 +1,7 @@
 from ultralytics import YOLO
 import numpy as np
 
+
 class Detector:
     def __init__(self, model_path="yolov8m-football.pt", conf_threshold=0.1):
         self.name = "Detector"
@@ -47,5 +48,5 @@ class Detector:
 
         return {
             "detections": detections,  # shape: (N, 4)
-            "classes": classes          # shape: (N,)
+            "classes": classes,  # shape: (N,)
         }
