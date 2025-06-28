@@ -1,5 +1,11 @@
 repos:
   - repo: https://github.com/psf/black
-    rev: 24.3.0  # updated to a compatible version
+    rev: 24.3.0
     hooks:
       - id: black
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
