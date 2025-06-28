@@ -1,6 +1,8 @@
 class Detector:
-    def __init__(self):
-        self.name = "Detector" # Do not change the name of the module as otherwise recording replay would break!
+    def __init__(self, model_path="yolov8m-football.pt", conf_threshold=0.1):
+        self.name = "Detector"
+        self.model_path = model_path
+        self.conf_threshold = conf_threshold
 
     def start(self, data):
         # TODO: Implement start up procedure of the module
