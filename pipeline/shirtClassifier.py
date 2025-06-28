@@ -16,15 +16,13 @@ class ShirtClassifier:
         print("ShirtClassifier has stopped.")
 
     def step(self, data):
-        # TODO: Implement processing of a current frame list
-        # The task of the shirt classifier module is to identify the two teams based on their shirt color and to assign each player to one of the two teams
+        image = data.get("image")
+        tracks = data.get("tracks", [])
+        track_classes = data.get("trackClasses", [])
 
-        # Note: You can access data["image"] and data["tracks"] to receive the current image as well as the current track list
-        # You must return a dictionary with the given fields:
-        #       "teamAColor":       A 3-tuple (B, G, R) containing the blue, green and red channel values (between 0 and 255) for team A
-        #       "teamBColor":       A 3-tuple (B, G, R) containing the blue, green and red channel values (between 0 and 255) for team B
-        #       "teamClasses"       A list with an integer class for each track according to the following mapping:
-        #           0: Team not decided or not a player (e.g. ball, goal keeper, referee)
-        #           1: Player belongs to team A
-        #           2: Player belongs to team B
-        return {"teamAColor": None, "teamBColor": None, "teamClasses": None}
+        if image is None or len(tracks) == 0:
+            return {
+                "teamAColor": self.teamAColor,
+                "teamBColor": self.teamBColor,
+                "teamClasses": [0] * len(tracks),
+            }
