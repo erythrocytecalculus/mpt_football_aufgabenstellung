@@ -61,10 +61,6 @@ class Tracker:
         track_ids = []
         team_classes = []
 
-        # Default team colors (can be updated later by ShirtClassifier)
-        teamAColor = (255, 0, 0)  # Default Red
-        teamBColor = (0, 0, 255)  # Default Blue
-
         # Update existing tracks with new detections
         for track in self.tracks:
             matched = False
@@ -130,10 +126,11 @@ class Tracker:
             "trackClasses": track_classes,
             "trackIds": track_ids,
             "teamClasses": team_classes,
-            "teamAColor": teamAColor,
-            "teamBColor": teamBColor,
         }
     
+    def stop(self, data):
+        print("[Tracker] Module stopped.")
+        
 
 
 
