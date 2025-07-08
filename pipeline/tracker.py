@@ -51,3 +51,23 @@ class Filter:
 
     def is_deleted(self, max_misses=5):
         return self.misses >= max_misses
+
+
+class Tracker:
+    def __init__(self):
+        self.name = "Tracker"
+        self.filters = []
+        self.max_misses = 5
+        self.dist_thresh = 50.0
+
+    def start(self, data):
+        self.filters = []
+        Filter._next_id = 1
+
+    def stop(self, data):
+        self.filters = []
+
+    def step(self, data):
+        for f in self.filters:
+            f.predict()
+        return {"tracks": np.empty((0, 4), dtype=np.float32)}
