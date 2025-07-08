@@ -68,6 +68,39 @@ class Tracker:
         self.filters = []
 
     def step(self, data):
+        dets = np.asarray(data.get("detections", []), dtype=np.float32)
+        classes = list(data.get("classes", []))
+
         for f in self.filters:
             f.predict()
-        return {"tracks": np.empty((0, 4), dtype=np.float32)}
+
+        unmatched_dets = list(range(len(dets)))
+
+        for f in self.filters:
+            best_idx = -1
+            best_dist = float("inf")
+            for i in unmatched_dets:
+                dist = np.linalg.norm(f.get_state()[:2] - dets[i][:2])
+                if dist < best_dist and dist < self.dist_thresh:
+                    best_idx = i
+                    best_dist = dist
+            if best_idx >= 0:
+                f.update(dets[best_idx])
+                f.cls = classes[best_idx]
+                unmatched_dets.remove(best_idx)
+
+        for i in unmatched_dets:
+            nf = Filter(dets[i], classes[i])
+            self.filters.append(nf)
+
+        self.filters = [f for f in self.filters if not f.is_deleted(self.max_misses)]
+
+        return {
+            "tracks": np.array([f.get_state() for f in self.filters], dtype=np.float32),
+            "trackVelocities": np.array(
+                [f.get_velocity() for f in self.filters], dtype=np.float32
+            ),
+            "trackAge": [f.age for f in self.filters],
+            "trackClasses": [f.cls for f in self.filters],
+            "trackIds": [f.id for f in self.filters],
+        }
