@@ -1,108 +1,53 @@
 import numpy as np
-from scipy.optimize import linear_sum_assignment
 
 
-class SimpleTrack:
-    _next_id = 0
+class Filter:
+    _next_id = 1
 
-    def __init__(self, bbox, cls):
-        self.id = SimpleTrack._next_id
-        SimpleTrack._next_id += 1
+    def __init__(self, z, cls):
+        self.x = np.zeros((6,), dtype=np.float32)
+        self.x[:4] = z
+        self.cls = int(cls)
 
-        self.position = np.array(bbox, dtype=np.float32)
-        self.previous_position = self.position.copy()
-        self.velocity = np.zeros(2, dtype=np.float32)
+        self.P = np.diag([10, 10, 10, 10, 1000, 1000]).astype(np.float32)
 
-        self.cls = cls
+        self.F = np.eye(6, dtype=np.float32)
+        self.F[0, 4] = 1.0
+        self.F[1, 5] = 1.0
+
+        self.H = np.zeros((4, 6), dtype=np.float32)
+        self.H[0, 0] = self.H[1, 1] = self.H[2, 2] = self.H[3, 3] = 1.0
+
+        self.Q = np.eye(6, dtype=np.float32) * 0.01
+        self.R = np.eye(4, dtype=np.float32) * 1.0
+
+        self.id = Filter._next_id
+        Filter._next_id += 1
+
         self.age = 1
-        self.missing = 0
+        self.misses = 0
 
     def predict(self):
-        predicted = self.position.copy()
-        predicted[0] += self.velocity[0]
-        predicted[1] += self.velocity[1]
-        self.previous_position = self.position
-        self.position = predicted
-
-    def update(self, bbox, cls):
-        self.previous_position = self.position
-        self.position = np.array(bbox, dtype=np.float32)
-        self.velocity = self.position[:2] - self.previous_position[:2]
-        self.cls = cls
-        self.missing = 0
+        self.x = self.F @ self.x
+        self.P = self.F @ self.P @ self.F.T + self.Q
         self.age += 1
+        self.misses += 1
 
-    def mark_missed(self):
-        self.missing += 1
-        self.age += 1
-        self.predict()
+    def update(self, z):
+        z = np.asarray(z, dtype=np.float32)
+        y = z - self.H @ self.x
+        S = self.H @ self.P @ self.H.T + self.R
+        K = self.P @ self.H.T @ np.linalg.inv(S)
+        self.x = self.x + K @ y
+        I = np.eye(6, dtype=np.float32)
+        self.P = (I - K @ self.H) @ self.P
+        self.misses = 0
 
-    def should_remove(self, max_missing=5):
-        return self.missing > max_missing
+    def get_state(self):
+        return self.x[:4].copy()
 
+    def get_velocity(self):
+        return self.x[4:].copy()
 
-class Tracker:
-    def __init__(self):
-        self.name = "Tracker"
-        self.tracks = []
-
-    def start(self, data):
-        self.tracks = []
-        SimpleTrack._next_id = 0
-
-    def stop(self, data):
-        pass
-
-    def _euclidean(self, p1, p2):
-        return np.linalg.norm(np.array(p1) - np.array(p2))
-
-    def step(self, data):
-        detections = np.asarray(data.get("detections", []), dtype=np.float32)
-        det_classes = list(data.get("classes", []))
-
-        max_dist = 250.0
-        assigned = set()
-        unmatched_tracks = list(range(len(self.tracks)))
-        unmatched_dets = list(range(len(detections)))
-
-        # Prediction step
-        for t in self.tracks:
-            t.predict()
-
-        # Association via cost matrix
-        if len(self.tracks) and len(detections):
-            cost = np.zeros((len(self.tracks), len(detections)), dtype=np.float32)
-            for i, track in enumerate(self.tracks):
-                for j, det in enumerate(detections):
-                    cost[i, j] = self._euclidean(track.position[:2], det[:2])
-            row_ind, col_ind = linear_sum_assignment(cost)
-
-            for r, c in zip(row_ind, col_ind):
-                if cost[r, c] < max_dist:
-                    self.tracks[r].update(detections[c], det_classes[c])
-                    assigned.add((r, c))
-                    unmatched_tracks.remove(r)
-                    unmatched_dets.remove(c)
-
-        # Update unmatched tracks
-        for i in unmatched_tracks:
-            self.tracks[i].mark_missed()
-
-        # Create new tracks for unmatched detections
-        for j in unmatched_dets:
-            new_track = SimpleTrack(detections[j], det_classes[j])
-            self.tracks.append(new_track)
-
-        # Remove old tracks
-        self.tracks = [t for t in self.tracks if not t.should_remove()]
-
-        # Return required format
-        return {
-            "tracks": np.array([t.position for t in self.tracks], dtype=np.float32),
-            "trackVelocities": np.array(
-                [t.velocity for t in self.tracks], dtype=np.float32
-            ),
-            "trackAge": [t.age for t in self.tracks],
-            "trackClasses": [t.cls for t in self.tracks],
-            "trackIds": [t.id for t in self.tracks],
-        }
+    def is_deleted(self, max_misses=5):
+        return self.misses >= max_misses
